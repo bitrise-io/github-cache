@@ -99,7 +99,7 @@ func runRestore(action *githubactions.Action) error {
 
 	// Check the BITRISE_CACHE_HIT env var set by the restorer
 	cacheHit := envRepo.Get("BITRISE_CACHE_HIT")
-
+	
 	if cacheHit == "false" || cacheHit == "" {
 		action.SetOutput("cache-hit", "false")
 		action.Infof("Cache not found for input keys: %s", strings.Join(keys, ", "))
