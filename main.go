@@ -81,12 +81,11 @@ func runRestore(action *githubactions.Action) error {
 		Keys:           keys,
 		NumFullRetries: 3,
 	})
-
 	if err != nil {
 		if failOnCacheMiss {
 			return fmt.Errorf("failed to restore cache entry. Input key: %s, error: %w", primaryKey, err)
 		}
-		action.Infof("Cache not found for input keys: %s", strings.Join(keys, ", "))
+		action.Infof("Cache not found for input keys: %s %s", strings.Join(keys, ", "), err)
 		action.SetOutput("cache-hit", "false")
 		return nil
 	}
@@ -162,7 +161,6 @@ func runSave(action *githubactions.Action) error {
 		IsKeyUnique:      false,
 		CompressionLevel: 3,
 	})
-
 	if err != nil {
 		action.Warningf("Cache save failed: %v", err)
 		return nil
