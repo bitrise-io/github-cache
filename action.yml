@@ -40,8 +40,6 @@ outputs:
 runs:
   using: 'docker'
   image: 'Dockerfile'
-  args:
-    - restore
   post-entrypoint: '/entrypoint.sh'
   post-if: "success()"
 branding:

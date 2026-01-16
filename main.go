@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/v2/cache"
@@ -22,23 +21,18 @@ const (
 func main() {
 	action := githubactions.New()
 
-	if len(os.Args) < 2 {
-		action.Fatalf("missing command argument (restore or save)")
-	}
+	// Detect if we're in the post phase by checking for state variables
+	// that were set during the main (restore) phase.
+	isPostPhase := action.Getenv("STATE_"+stateCachePrimaryKey) != ""
 
-	command := os.Args[1]
-
-	switch command {
-	case "restore":
-		if err := runRestore(action); err != nil {
-			action.Fatalf("restore failed: %v", err)
-		}
-	case "save":
+	if isPostPhase {
 		if err := runSave(action); err != nil {
 			action.Fatalf("save failed: %v", err)
 		}
-	default:
-		action.Fatalf("unknown command: %s", command)
+	} else {
+		if err := runRestore(action); err != nil {
+			action.Fatalf("restore failed: %v", err)
+		}
 	}
 }
 
@@ -99,7 +93,7 @@ func runRestore(action *githubactions.Action) error {
 
 	// Check the BITRISE_CACHE_HIT env var set by the restorer
 	cacheHit := envRepo.Get("BITRISE_CACHE_HIT")
-	
+
 	if cacheHit == "false" || cacheHit == "" {
 		action.SetOutput("cache-hit", "false")
 		action.Infof("Cache not found for input keys: %s", strings.Join(keys, ", "))
@@ -128,8 +122,8 @@ func runSave(action *githubactions.Action) error {
 	pathProvider := pathutil.NewPathProvider()
 	pathModifier := pathutil.NewPathModifier()
 
-	// Get the primary key from state or input
-	primaryKey := os.Getenv("STATE_" + stateCachePrimaryKey)
+	// Get the primary key from state (set during restore phase) or input
+	primaryKey := action.Getenv("STATE_" + stateCachePrimaryKey)
 	if primaryKey == "" {
 		primaryKey = action.GetInput("key")
 	}
@@ -139,8 +133,8 @@ func runSave(action *githubactions.Action) error {
 		return nil
 	}
 
-	// Check if we already had an exact cache hit
-	matchedKey := os.Getenv("STATE_" + stateCacheMatchedKey)
+	// Check if we already had an exact cache hit (skip saving if so)
+	matchedKey := action.Getenv("STATE_" + stateCacheMatchedKey)
 	if matchedKey == primaryKey {
 		action.Infof("Cache hit occurred on the primary key %s, not saving cache.", primaryKey)
 		return nil
