@@ -40,6 +40,16 @@ outputs:
 runs:
   using: 'docker'
   image: 'Dockerfile'
+  env:
+    INPUT_PATH: ${{ inputs.path }}
+    INPUT_KEY: ${{ inputs.key }}
+    INPUT_RESTORE-KEYS: ${{ inputs.restore-keys }}
+    INPUT_UPLOAD-CHUNK-SIZE: ${{ inputs.upload-chunk-size }}
+    INPUT_ENABLECROSSOSARCHIVE: ${{ inputs.enableCrossOsArchive }}
+    INPUT_FAIL-ON-CACHE-MISS: ${{ inputs.fail-on-cache-miss }}
+    INPUT_LOOKUP-ONLY: ${{ inputs.lookup-only }}
+    INPUT_SAVE-ALWAYS: ${{ inputs.save-always }}
+    INPUT_VERBOSE: ${{ inputs.verbose }}
   args:
     - restore
   post-entrypoint: '/entrypoint.sh'
