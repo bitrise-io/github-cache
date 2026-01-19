@@ -93,15 +93,14 @@ make build-local
 github-cache/
 ├── action.yml          # GitHub Action definition
 ├── package.json        # Node.js dependencies
-├── tsconfig.json       # TypeScript configuration
 ├── Makefile            # Build automation
 ├── main.go             # Go source code
 ├── go.mod              # Go module definition
 ├── vendor/             # Go dependencies (vendored)
-├── src/                # TypeScript source
-│   ├── main.ts         # Restore entry point
-│   ├── post.ts         # Save entry point
-│   └── run.ts          # Go binary runner
+├── src/                # JavaScript source
+│   ├── main.js         # Restore entry point
+│   ├── post.js         # Save entry point
+│   └── run.js          # Go binary runner
 ├── dist/               # Built JS bundles (committed)
 │   ├── main/index.js
 │   └── post/index.js
