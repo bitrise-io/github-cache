@@ -28250,7 +28250,8 @@ function getPlatform() {
 function getBinaryPath() {
   const platform = getPlatform();
   // Use GITHUB_ACTION_PATH which points to the action root directory
-  const actionPath = process.env.GITHUB_ACTION_PATH || path.join(__dirname, '..');
+  // Fallback: when bundled, __dirname is dist/main or dist/post, so go up 2 levels
+  const actionPath = process.env.GITHUB_ACTION_PATH || path.join(__dirname, '..', '..');
   const binaryDir = path.join(actionPath, 'bin');
   const binaryName = `${BINARY_NAME}-${platform.os}-${platform.arch}${platform.extension}`;
   return path.join(binaryDir, binaryName);
