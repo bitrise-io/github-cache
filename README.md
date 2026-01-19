@@ -1,14 +1,6 @@
 # Bitrise Cache GitHub Action
 
-A GitHub Action that provides caching functionality using Bitrise's cache backend while maintaining the same interface as the official `actions/cache` action.
-
-## Features
-
-- **Drop-in replacement**: Same input/output interface as `actions/cache`
-- **Bitrise cache backend**: Uses Bitrise's high-performance cache storage
-- **Automatic restore/save**: Restores cache at the start of the job and saves it at the end
-- **Restore key fallback**: Supports fallback restore keys for partial cache hits
-- **zstd compression**: Uses zstd compression for fast and efficient archiving
+A GitHub Action that provides caching using Bitrise's cache backend, with an interface compatible with `actions/cache`.
 
 ## Usage
 
@@ -29,9 +21,9 @@ A GitHub Action that provides caching functionality using Bitrise's cache backen
 |-------|-------------|----------|---------|
 | `path` | A list of files, directories, and wildcard patterns to cache and restore | Yes | |
 | `key` | An explicit key for restoring and saving the cache | Yes | |
-| `restore-keys` | An ordered multiline string listing prefix-matched keys for fallback restore | No | |
+| `restore-keys` | An ordered multiline string listing the prefix-matched keys for restoring stale cache | No | |
 | `fail-on-cache-miss` | Fail the workflow if cache entry is not found | No | `false` |
-| `lookup-only` | Check if cache exists without downloading | No | `false` |
+| `lookup-only` | Check if a cache entry exists without downloading it | No | `false` |
 | `verbose` | Enable verbose logging | No | `false` |
 
 ## Outputs
@@ -40,96 +32,92 @@ A GitHub Action that provides caching functionality using Bitrise's cache backen
 |--------|-------------|
 | `cache-hit` | A boolean value indicating if an exact match was found for the primary key |
 
-## Environment Variables
-
-The following environment variables must be set for the action to work:
-
-| Variable | Description |
-|----------|-------------|
-| `BITRISEIO_ABCS_API_URL` | Bitrise cache API base URL |
-| `BITRISEIO_BITRISE_SERVICES_ACCESS_TOKEN` | Bitrise services access token |
-
-## Example Workflows
-
-### Basic Usage
-
-```yaml
-name: Build
-on: push
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Cache node modules
-        uses: bitrise-io/github-cache@v1
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build
-        run: npm run build
-```
-
-### Multiple Cache Paths
-
-```yaml
-- uses: bitrise-io/github-cache@v1
-  with:
-    path: |
-      ~/.gradle/caches
-      ~/.gradle/wrapper
-    key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-    restore-keys: |
-      ${{ runner.os }}-gradle-
-```
-
-### Fail on Cache Miss
-
-```yaml
-- uses: bitrise-io/github-cache@v1
-  with:
-    path: node_modules
-    key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-    fail-on-cache-miss: true
-```
-
 ## How It Works
 
-1. **Restore Phase (main step)**: 
-   - Attempts to find a cache entry matching the provided key
-   - Falls back to restore-keys if no exact match is found
-   - Downloads and extracts the cache archive
-   - Sets `cache-hit` output to `true` for exact matches, `false` otherwise
+This action uses Bitrise's cache infrastructure instead of GitHub's cache. This can be beneficial when:
 
-2. **Save Phase (post step)**:
-   - Skips saving if an exact cache hit occurred during restore
-   - Creates a compressed archive of the specified paths
-   - Uploads the archive to Bitrise cache storage
+- You need more cache storage than GitHub provides
+- You want to use Bitrise Runners for GitHub
+- You want to use Bitrise's cache features
 
-## Differences from actions/cache
+The action runs as a Node.js wrapper around a Go binary that handles the actual cache operations using Bitrise's cache SDK.
 
-- Uses Bitrise cache backend instead of GitHub's cache
-- Requires Bitrise credentials via environment variables
-- Some advanced features (like `upload-chunk-size`, `enableCrossOsArchive`, `save-always`) are not fully supported
+## Architecture
 
-## Building
-
-```bash
-go build -o bitrise-cache .
+```
+action.yml
+    │
+    ├── main (restore phase)
+    │   └── dist/main/index.js → bin/bitrise-cache-{OS}-{ARCH} restore
+    │
+    └── post (save phase)
+        └── dist/post/index.js → bin/bitrise-cache-{OS}-{ARCH} save
 ```
 
-## Docker
+## Development
 
-The action runs in a Docker container. To build locally:
+### Prerequisites
+
+- Node.js 20+
+- Go 1.22+
+- Make
+
+### Building
 
 ```bash
-docker build -t bitrise-cache .
+# Install npm dependencies
+npm install
+
+# Build everything (Go binaries + JS bundles)
+make build
+
+# Or build components separately:
+make binaries      # Build Go binaries for all platforms
+npm run build:js   # Build JS bundles
 ```
+
+### Local Testing
+
+```bash
+# Build for current platform only
+make build-local
+
+# Test the binary directly
+./bin/bitrise-cache restore
+./bin/bitrise-cache save
+```
+
+### Project Structure
+
+```
+github-cache/
+├── action.yml          # GitHub Action definition
+├── package.json        # Node.js dependencies
+├── tsconfig.json       # TypeScript configuration
+├── Makefile            # Build automation
+├── main.go             # Go source code
+├── go.mod              # Go module definition
+├── vendor/             # Go dependencies (vendored)
+├── src/                # TypeScript source
+│   ├── main.ts         # Restore entry point
+│   ├── post.ts         # Save entry point
+│   └── run.ts          # Go binary runner
+├── dist/               # Built JS bundles (committed)
+│   ├── main/index.js
+│   └── post/index.js
+└── bin/                # Pre-built Go binaries (committed)
+    ├── bitrise-cache-Linux-x86_64
+    ├── bitrise-cache-Linux-arm64
+    ├── bitrise-cache-Darwin-x86_64
+    ├── bitrise-cache-Darwin-arm64
+    └── bitrise-cache-Windows-x86_64.exe
+```
+
+## Requirements
+
+This action requires the following environment variables to be set for Bitrise cache to work:
+
+- `BITRISEIO_CACHE_SERVICE_URL` - Bitrise cache service URL
+- `BITRISEIO_BUILD_API_TOKEN` - Bitrise build API token
+
+These are automatically available in Bitrise builds. For GitHub Actions, you'll need to configure them as secrets.

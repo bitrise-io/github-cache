@@ -38,9 +38,9 @@ outputs:
   cache-hit:
     description: 'A boolean value to indicate an exact match was found for the primary key'
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  post-entrypoint: '/entrypoint.sh'
+  using: 'node20'
+  main: 'dist/main/index.js'
+  post: 'dist/post/index.js'
   post-if: "success()"
 branding:
   icon: 'archive'

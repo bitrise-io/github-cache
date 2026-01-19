@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build outputs (lib/ only - dist/ and bin/ are committed for the action to work)
+lib/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage/
+*.log
+
+# Envstore (runtime artifact)
+.envstore.yml
