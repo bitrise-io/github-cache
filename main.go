@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/v2/cache"
@@ -21,18 +22,30 @@ const (
 func main() {
 	action := githubactions.New()
 
-	// Detect if we're in the post phase by checking for state variables
-	// that were set during the main (restore) phase.
-	isPostPhase := action.Getenv("STATE_"+stateCachePrimaryKey) != ""
-
-	if isPostPhase {
-		if err := runSave(action); err != nil {
-			action.Fatalf("save failed: %v", err)
-		}
+	// Check for phase argument (restore or save)
+	var phase string
+	if len(os.Args) > 1 {
+		phase = os.Args[1]
 	} else {
+		// Fallback: detect phase via state variable (for backwards compatibility)
+		if action.Getenv("STATE_"+stateCachePrimaryKey) != "" {
+			phase = "save"
+		} else {
+			phase = "restore"
+		}
+	}
+
+	switch phase {
+	case "restore":
 		if err := runRestore(action); err != nil {
 			action.Fatalf("restore failed: %v", err)
 		}
+	case "save":
+		if err := runSave(action); err != nil {
+			action.Fatalf("save failed: %v", err)
+		}
+	default:
+		action.Fatalf("unknown phase: %s (expected 'restore' or 'save')", phase)
 	}
 }
 
