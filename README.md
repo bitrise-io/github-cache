@@ -42,6 +42,12 @@ This action uses Bitrise's cache infrastructure instead of GitHub's cache. This 
 
 The action runs as a Node.js wrapper around a Go binary that handles the actual cache operations using Bitrise's cache SDK.
 
+### Cache Isolation
+
+Cache artifacts are automatically scoped to each GitHub repository. The repository name is prepended to all cache keys to ensure that caches are not shared between different repositories. This happens transparently - you don't need to include the repository name in your cache keys.
+
+For example, if you specify `key: node-modules-v1`, the actual cache key will be `myrepo-node-modules-v1`.
+
 ## Architecture
 
 ```

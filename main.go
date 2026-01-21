@@ -19,6 +19,42 @@ const (
 	stateCacheMatchedKey = "CACHE_RESULT"
 )
 
+// getCacheKeyPrefix returns a prefix based on the GitHub repository to ensure
+// cache artifacts are not shared between different repositories.
+func getCacheKeyPrefix(action *githubactions.Action) string {
+	ctx, err := action.Context()
+	if err != nil {
+		action.Debugf("Failed to get GitHub context: %v", err)
+	}
+
+	if ctx != nil {
+		_, repo := ctx.Repo()
+		if repo != "" {
+			return repo + "-"
+		}
+	}
+
+	return ""
+}
+
+// prefixCacheKey adds the repository prefix to a cache key
+func prefixCacheKey(action *githubactions.Action, key string) string {
+	return getCacheKeyPrefix(action) + key
+}
+
+// prefixCacheKeys adds the repository prefix to multiple cache keys
+func prefixCacheKeys(action *githubactions.Action, keys []string) []string {
+	prefix := getCacheKeyPrefix(action)
+	if prefix == "" {
+		return keys
+	}
+	prefixedKeys := make([]string, len(keys))
+	for i, key := range keys {
+		prefixedKeys[i] = prefix + key
+	}
+	return prefixedKeys
+}
+
 func main() {
 	action := githubactions.New()
 
@@ -77,7 +113,11 @@ func runRestore(action *githubactions.Action) error {
 		keys = append(keys, restoreKeys...)
 	}
 
+	// Add repository prefix to all keys to scope cache to this repo
+	prefixedKeys := prefixCacheKeys(action, keys)
+
 	action.Infof("Searching for cache with keys: %s", strings.Join(keys, ", "))
+	action.Debugf("Prefixed cache keys: %s", strings.Join(prefixedKeys, ", "))
 
 	if lookupOnly {
 		// For lookup-only, we just check if cache exists without downloading
@@ -91,7 +131,7 @@ func runRestore(action *githubactions.Action) error {
 	err := restorer.Restore(cache.RestoreCacheInput{
 		StepId:         "github-cache-restore",
 		Verbose:        verbose,
-		Keys:           keys,
+		Keys:           prefixedKeys,
 		NumFullRetries: 3,
 	})
 	if err != nil {
@@ -161,7 +201,11 @@ func runSave(action *githubactions.Action) error {
 	verbose := parseBool(action.GetInput("verbose"))
 	logger.EnableDebugLog(verbose)
 
+	// Add repository prefix to scope cache to this repo
+	prefixedKey := prefixCacheKey(action, primaryKey)
+
 	action.Infof("Saving cache with key: %s", primaryKey)
+	action.Debugf("Prefixed cache key: %s", prefixedKey)
 	action.Infof("Paths: %s", strings.Join(paths, ", "))
 
 	// Use Bitrise cache saver
@@ -169,7 +213,7 @@ func runSave(action *githubactions.Action) error {
 	err := saver.Save(cache.SaveCacheInput{
 		StepId:           "github-cache-save",
 		Verbose:          verbose,
-		Key:              primaryKey,
+		Key:              prefixedKey,
 		Paths:            paths,
 		IsKeyUnique:      false,
 		CompressionLevel: 3,
