@@ -20,15 +20,8 @@ endef
 
 all: build
 
-# Build Go binaries for all platforms
-binaries: clean-bin
-	@mkdir -p $(BIN_DIR)
-	$(foreach platform,$(PLATFORMS),$(call build_binary,$(platform)))
-	@echo "All binaries built in $(BIN_DIR)/"
-	@ls -la $(BIN_DIR)/
-
-# Build everything (binaries + JS)
-build: binaries
+# Build JS
+build:
 	npm run build:js
 
 # Install npm dependencies
@@ -41,10 +34,16 @@ clean-bin:
 
 # Clean all build artifacts
 clean: clean-bin
-	rm -rf dist lib node_modules
+	rm -rf dist lib node_modules dist-goreleaser
 
 # Build for current platform only (for local testing)
 build-local:
 	@mkdir -p $(BIN_DIR)
 	go build -mod=vendor -ldflags="-s -w" -o $(BIN_DIR)/$(BINARY_NAME) .
 	@echo "Built $(BIN_DIR)/$(BINARY_NAME)"
+
+goreleaser:
+	go run github.com/goreleaser/goreleaser/v2@latest release
+
+goreleaser-snapshot:
+	go run github.com/goreleaser/goreleaser/v2@latest release --auto-snapshot --clean --skip publish

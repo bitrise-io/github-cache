@@ -20,3 +20,6 @@ coverage/
 
 # Envstore (runtime artifact)
 .envstore.yml
+
+dist-goreleaser/
+.bitrise.secrets.yml

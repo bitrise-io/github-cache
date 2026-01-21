@@ -1,0 +1,39 @@
+format_version: "23"
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: other
+
+app:
+  envs:
+  - GITHUB_TOKEN: $GITHUB_TOKEN
+
+tools:
+  golang: 1.25:latest
+
+workflows:
+  release:
+    description: GitHub Release Workflow
+    triggers:
+      tag:
+      - name:
+          regex: '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+    envs:
+    - GITHUB_TOKEN: $GITHUB_TOKEN
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@8:
+        inputs:
+        - fetch_tags: "yes"
+    - script:
+        title: GoReleaser (create binaries + publish to GH)
+        inputs:
+        - content: |
+            #!/usr/bin/env bash
+            set -ex
+            
+            make goreleaser
+
+meta:
+  bitrise.io:
+    stack: linux-docker-android-22.04
+    machine_type_id: g2.linux.medium
