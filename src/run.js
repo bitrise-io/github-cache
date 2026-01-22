@@ -65,7 +65,7 @@ async function ensureEnvman(platform) {
 }
 
 async function downloadBinary(platform) {
-  const url = `https://github.com/bitrise-io/github-cache/releases/${BINARY_TAG}/download/${BINARY_NAME}-${BINARY_TAG}-${platform.os}-${platform.arch}`;
+  const url = `https://github.com/bitrise-io/github-cache/releases/download/${BINARY_TAG}/${BINARY_NAME}_${BINARY_TAG}_${platform.os}_${platform.arch}`;
 
   core.info(`Installing binary from ${url}`);
 
@@ -73,7 +73,7 @@ async function downloadBinary(platform) {
 }
 
 async function downloadTool(toolName, url, platform) {
-  core.info(`Downloading tool from ${url}`);
+  core.info(`Downloading ${toolName} from ${url}`);
 
   const from = await tc.downloadTool(url);
   const toPath = path.join(os.homedir(), '.bitrise', 'bin');
@@ -111,7 +111,7 @@ async function run(phase) {
     const envstorePath = await setupEnvstore();
 
     // Get the binary path
-    const binaryPath = await downloadBinary()
+    const binaryPath = await downloadBinary(platform)
 
     core.debug(`Running ${binaryPath} with phase: ${phase}`);
 
