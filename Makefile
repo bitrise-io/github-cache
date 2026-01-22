@@ -1,4 +1,4 @@
-.PHONY: all clean binaries build install
+.PHONY: all clean binaries build install check-version-bump
 
 BINARY_NAME := bitrise-cache
 BIN_DIR := bin
@@ -20,16 +20,9 @@ endef
 
 all: build
 
-# Build Go binaries for all platforms
-binaries: clean-bin
-	@mkdir -p $(BIN_DIR)
-	$(foreach platform,$(PLATFORMS),$(call build_binary,$(platform)))
-	@echo "All binaries built in $(BIN_DIR)/"
-	@ls -la $(BIN_DIR)/
-
-# Build everything (binaries + JS)
-build: binaries
-	npm run build:js
+# Build JS
+build:
+	npm run build
 
 # Install npm dependencies
 install:
@@ -41,10 +34,25 @@ clean-bin:
 
 # Clean all build artifacts
 clean: clean-bin
-	rm -rf dist lib node_modules
+	rm -rf dist lib node_modules dist-goreleaser
 
 # Build for current platform only (for local testing)
 build-local:
 	@mkdir -p $(BIN_DIR)
 	go build -mod=vendor -ldflags="-s -w" -o $(BIN_DIR)/$(BINARY_NAME) .
 	@echo "Built $(BIN_DIR)/$(BINARY_NAME)"
+
+goreleaser:
+	go run github.com/goreleaser/goreleaser/v2@latest release
+
+goreleaser-snapshot:
+	go run github.com/goreleaser/goreleaser/v2@latest release --auto-snapshot --clean --skip publish
+
+# Check if package.json version has been bumped compared to origin/master
+check-version-bump:
+	@if git diff origin/master -- package.json | grep -E '^[+-].*"version"' | grep -qv '^[+-]{3}'; then \
+		echo "Version has been bumped"; \
+	else \
+		echo "Error: Version has not been bumped in package.json"; \
+		exit 1; \
+	fi

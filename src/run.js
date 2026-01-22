@@ -7,6 +7,7 @@ const os = require('os');
 const path = require('path');
 
 const BINARY_NAME = 'bitrise-cache';
+const BINARY_TAG = 'v@VERSION@';
 const ENVMAN_VERSION = 'latest';
 
 function getPlatform() {
@@ -43,20 +44,10 @@ function getPlatform() {
       throw new Error(`Unsupported architecture: ${arch}`);
   }
 
-  return { os: osName, arch: archName, extension };
+  return {os: osName, arch: archName, extension: extension};
 }
 
-function getBinaryPath() {
-  const platform = getPlatform();
-  // Use GITHUB_ACTION_PATH which points to the action root directory
-  // Fallback: when bundled, __dirname is dist/main or dist/post, so go up 2 levels
-  const actionPath = process.env.GITHUB_ACTION_PATH || path.join(__dirname, '..', '..');
-  const binaryDir = path.join(actionPath, 'bin');
-  const binaryName = `${BINARY_NAME}-${platform.os}-${platform.arch}${platform.extension}`;
-  return path.join(binaryDir, binaryName);
-}
-
-async function ensureEnvman() {
+async function ensureEnvman(platform) {
   // Check if envman is already available
   try {
     await io.which('envman', true);
@@ -66,57 +57,64 @@ async function ensureEnvman() {
     core.debug('envman not found in PATH, will install');
   }
 
-  const platform = getPlatform();
   const envmanUrl = `https://github.com/bitrise-io/envman/releases/${ENVMAN_VERSION}/download/envman-${platform.os}-${platform.arch}`;
-  
+
   core.info(`Installing envman from ${envmanUrl}`);
-  
-  const envmanPath = await tc.downloadTool(envmanUrl);
-  const envmanDir = path.join(os.homedir(), '.bitrise', 'bin');
-  
-  await io.mkdirP(envmanDir);
-  const envmanBinary = path.join(envmanDir, `envman${platform.extension}`);
-  await io.cp(envmanPath, envmanBinary);
-  await fs.promises.chmod(envmanBinary, 0o755);
-  
-  core.addPath(envmanDir);
-  core.debug(`envman installed to ${envmanBinary}`);
+
+  await downloadTool('envman', envmanUrl, platform);
+}
+
+async function downloadBinary(platform) {
+  const url = `https://github.com/bitrise-io/github-cache/releases/${BINARY_TAG}/download/${BINARY_NAME}-${BINARY_TAG}-${platform.os}-${platform.arch}`;
+
+  core.info(`Installing binary from ${url}`);
+
+  return downloadTool(BINARY_NAME, url, platform);
+}
+
+async function downloadTool(toolName, url, platform) {
+  core.info(`Downloading tool from ${url}`);
+
+  const from = await tc.downloadTool(url);
+  const toPath = path.join(os.homedir(), '.bitrise', 'bin');
+
+  await io.mkdirP(toPath);
+  const to = path.join(toPath, `${toolName}${platform.extension}`);
+  await io.cp(from, to);
+  await fs.promises.chmod(to, 0o755);
+
+  core.addPath(toPath);
+  core.debug(`${toolName} installed to ${to}`);
+
+  return to;
 }
 
 async function setupEnvstore() {
   const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
   const envstorePath = path.join(workspace, '.envstore.yml');
-  
+
   if (!fs.existsSync(envstorePath)) {
     await fs.promises.writeFile(envstorePath, '');
     core.debug(`Created envstore at ${envstorePath}`);
   }
-  
+
   return envstorePath;
 }
 
 async function run(phase) {
   try {
+    const platform = getPlatform();
     // Ensure envman is available
-    await ensureEnvman();
-    
+    await ensureEnvman(platform);
+
     // Setup envstore
     const envstorePath = await setupEnvstore();
-    
+
     // Get the binary path
-    const binaryPath = getBinaryPath();
-    
-    if (!fs.existsSync(binaryPath)) {
-      throw new Error(`Binary not found at ${binaryPath}. Please ensure the action was built correctly.`);
-    }
-    
-    // Make binary executable (for non-Windows)
-    if (os.platform() !== 'win32') {
-      await fs.promises.chmod(binaryPath, 0o755);
-    }
-    
+    const binaryPath = await downloadBinary()
+
     core.debug(`Running ${binaryPath} with phase: ${phase}`);
-    
+
     // Run the binary with the phase argument
     const exitCode = await exec.exec(binaryPath, [phase], {
       env: {
@@ -124,7 +122,7 @@ async function run(phase) {
         ENVMAN_ENVSTORE_PATH: envstorePath,
       },
     });
-    
+
     if (exitCode !== 0) {
       throw new Error(`Binary exited with code ${exitCode}`);
     }
@@ -133,4 +131,4 @@ async function run(phase) {
   }
 }
 
-module.exports = { run };
+module.exports = {run};
