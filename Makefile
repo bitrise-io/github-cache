@@ -22,7 +22,7 @@ all: build
 
 # Build JS
 build:
-	npm run build:js
+	npm run build
 
 # Install npm dependencies
 install:

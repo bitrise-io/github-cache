@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 
 const BINARY_NAME = 'bitrise-cache';
-const BINARY_TAG = 'v0.0.1';
+const BINARY_TAG = 'v@VERSION@';
 const ENVMAN_VERSION = 'latest';
 
 function getPlatform() {
