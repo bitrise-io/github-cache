@@ -1,4 +1,4 @@
-.PHONY: all clean binaries build install
+.PHONY: all clean binaries build install check-version-bump
 
 BINARY_NAME := bitrise-cache
 BIN_DIR := bin
@@ -47,3 +47,12 @@ goreleaser:
 
 goreleaser-snapshot:
 	go run github.com/goreleaser/goreleaser/v2@latest release --auto-snapshot --clean --skip publish
+
+# Check if package.json version has been bumped compared to origin/master
+check-version-bump:
+	@if git diff origin/master -- package.json | grep -E '^[+-].*"version"' | grep -qv '^[+-]{3}'; then \
+		echo "Version has been bumped"; \
+	else \
+		echo "Error: Version has not been bumped in package.json"; \
+		exit 1; \
+	fi

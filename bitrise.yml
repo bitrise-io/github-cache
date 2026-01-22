@@ -10,6 +10,24 @@ tools:
   golang: 1.25:latest
 
 workflows:
+  ci:
+    description: CI
+    triggers:
+      pull_request:
+      - target_branch: "master"
+    steps:
+    - activate-ssh-key:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone: { }
+    - script:
+        title: Check version bump in package.json
+        inputs:
+        - content: |
+            #!/usr/bin/env bash
+            set -ex
+            
+            make check-version-bump
+
   release:
     description: GitHub Release Workflow
     triggers:
@@ -19,9 +37,9 @@ workflows:
     envs:
     - GITHUB_TOKEN: $GITHUB_TOKEN
     steps:
-    - activate-ssh-key@4:
+    - activate-ssh-key:
         run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
-    - git-clone@8:
+    - git-clone:
         inputs:
         - fetch_tags: "yes"
     - script:
