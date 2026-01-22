@@ -4,6 +4,10 @@ A GitHub Action that provides caching using Bitrise's cache backend, with an int
 
 ## Usage
 
+### Unified Action (Save and Restore)
+
+Use the main action to handle both cache restoration and saving automatically:
+
 ```yaml
 - uses: bitrise-io/github-cache@v1
   with:
@@ -14,6 +18,92 @@ A GitHub Action that provides caching using Bitrise's cache backend, with an int
     restore-keys: |
       ${{ runner.os }}-node-
 ```
+
+### Separate Restore and Save Actions
+
+For more control, use the separate restore and save actions:
+
+#### Restore Only
+
+```yaml
+- uses: bitrise-io/github-cache/restore@v1
+  id: cache
+  with:
+    path: |
+      ~/.npm
+      node_modules
+    key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+    restore-keys: |
+      ${{ runner.os }}-node-
+```
+
+#### Save Only
+
+```yaml
+- uses: bitrise-io/github-cache/save@v1
+  with:
+    path: |
+      ~/.npm
+      node_modules
+    key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+```
+
+#### Complete Example with Conditional Save
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Restore cache
+      - uses: bitrise-io/github-cache/restore@v1
+        id: cache
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Install dependencies only if cache miss
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # Build and test
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      # Save cache (only if dependencies changed)
+      - uses: bitrise-io/github-cache/save@v1
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+```
+
+### When to Use Separate Actions
+
+Use the separate `restore` and `save` actions when you need:
+
+- **Conditional saving**: Save cache only under certain conditions (e.g., only on cache miss, only on specific branches)
+- **Early exit workflows**: Restore cache early in the workflow but save it only if all steps succeed
+- **Multiple cache operations**: Different restore/save logic in the same workflow
+- **Explicit control**: Fine-grained control over when caching happens
+
+Use the unified action when:
+
+- **Simple workflows**: Default cache-on-miss, save-on-success behavior is sufficient
+- **Less boilerplate**: You want minimal configuration
+- **Standard pattern**: Your workflow follows the typical restore-build-save pattern
 
 ## Inputs
 
