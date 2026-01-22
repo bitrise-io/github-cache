@@ -40,7 +40,7 @@ This action uses Bitrise's cache infrastructure instead of GitHub's cache. This 
 - You want to use Bitrise Runners for GitHub
 - You want to use Bitrise's cache features
 
-The action runs as a Node.js wrapper around a Go binary that handles the actual cache operations using Bitrise's cache SDK.
+The action runs as a Node.js wrapper around a Go binary that handles the actual cache operations using Bitrise's cache SDK. The Go binary is automatically downloaded from GitHub releases at runtime.
 
 ### Cache Isolation
 
@@ -54,11 +54,13 @@ For example, if you specify `key: node-modules-v1`, the actual cache key will be
 action.yml
     │
     ├── main (restore phase)
-    │   └── dist/main/index.js → bin/bitrise-cache-{OS}-{ARCH} restore
+    │   └── dist/main/index.js → downloads bitrise-cache binary → restore
     │
     └── post (save phase)
-        └── dist/post/index.js → bin/bitrise-cache-{OS}-{ARCH} save
+        └── dist/post/index.js → uses cached binary → save
 ```
+
+The Go binary is downloaded from GitHub releases on first run and cached in `~/.bitrise/bin/`.
 
 ## Development
 
@@ -74,12 +76,8 @@ action.yml
 # Install npm dependencies
 npm install
 
-# Build everything (Go binaries + JS bundles)
+# Build JS bundles
 make build
-
-# Or build components separately:
-make binaries      # Build Go binaries for all platforms
-npm run build:js   # Build JS bundles
 ```
 
 ### Local Testing
@@ -93,29 +91,36 @@ make build-local
 ./bin/bitrise-cache save
 ```
 
+### Releasing
+
+Releases are managed via [GoReleaser](https://goreleaser.com/). When a new version is tagged, GoReleaser builds binaries for all platforms and publishes them to GitHub releases.
+
+```bash
+# Create a snapshot release (for testing)
+make goreleaser-snapshot
+
+# Create a release (requires a git tag)
+make goreleaser
+```
+
 ### Project Structure
 
 ```
 github-cache/
 ├── action.yml          # GitHub Action definition
-├── package.json        # Node.js dependencies
+├── package.json        # Node.js dependencies (version defines release version)
 ├── Makefile            # Build automation
+├── .goreleaser.yaml    # GoReleaser configuration
 ├── main.go             # Go source code
 ├── go.mod              # Go module definition
 ├── vendor/             # Go dependencies (vendored)
 ├── src/                # JavaScript source
 │   ├── main.js         # Restore entry point
 │   ├── post.js         # Save entry point
-│   └── run.js          # Go binary runner
-├── dist/               # Built JS bundles (committed)
-│   ├── main/index.js
-│   └── post/index.js
-└── bin/                # Pre-built Go binaries (committed)
-    ├── bitrise-cache-Linux-x86_64
-    ├── bitrise-cache-Linux-arm64
-    ├── bitrise-cache-Darwin-x86_64
-    ├── bitrise-cache-Darwin-arm64
-    └── bitrise-cache-Windows-x86_64.exe
+│   └── run.js          # Binary downloader and runner
+└── dist/               # Built JS bundles (committed)
+    ├── main/index.js
+    └── post/index.js
 ```
 
 ## Requirements
