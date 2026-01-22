@@ -25,7 +25,8 @@ workflows:
         - content: |
             #!/usr/bin/env bash
             set -ex
-            
+
+            git fetch origin master
             make check-version-bump
 
   release:
