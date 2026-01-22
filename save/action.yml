@@ -23,7 +23,7 @@ inputs:
 
 runs:
   using: 'node20'
-  main: '../dist/save/index.js'
+  main: '../dist/post/index.js'
 
 branding:
   icon: 'archive'

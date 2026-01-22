@@ -6,7 +6,7 @@
   "main": "dist/main/index.js",
   "scripts": {
     "build": "npm run build:binaries && npm run build:js",
-    "build:js": "ncc build src/main.js -o dist/main && ncc build src/post.js -o dist/post && ncc build src/restore-main.js -o dist/restore && ncc build src/save-main.js -o dist/save",
+    "build:js": "ncc build src/main.js -o dist/main && ncc build src/post.js -o dist/post",
     "build:binaries": "make binaries"
   },
   "keywords": [

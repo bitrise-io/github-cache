@@ -39,7 +39,7 @@ outputs:
 
 runs:
   using: 'node20'
-  main: '../dist/restore/index.js'
+  main: '../dist/main/index.js'
 
 branding:
   icon: 'archive'
