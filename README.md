@@ -166,6 +166,9 @@ The Go binary is downloaded from GitHub releases on first run and cached in `~/.
 # Install npm dependencies
 npm install
 
+# bump version in package.json (also used for releases)
+npm version patch   # or minor, major
+
 # Build JS bundles
 make build
 ```
