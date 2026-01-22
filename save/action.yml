@@ -1,0 +1,30 @@
+name: 'Save a cache'
+description: 'Save Cache artifacts like dependencies and build outputs to improve workflow execution time'
+author: 'Bitrise'
+
+inputs:
+  path:
+    description: 'A list of files, directories, and wildcard patterns to cache'
+    required: true
+  key:
+    description: 'An explicit key for saving the cache'
+    required: true
+  upload-chunk-size:
+    description: 'The chunk size used to split up large files during upload, in bytes'
+    required: false
+  enableCrossOsArchive:
+    description: 'An optional boolean when enabled, allows windows runners to save caches that can be restored on other platforms'
+    default: 'false'
+    required: false
+  verbose:
+    description: 'Enable verbose logging'
+    default: 'false'
+    required: false
+
+runs:
+  using: 'node20'
+  main: '../dist/save/index.js'
+
+branding:
+  icon: 'archive'
+  color: 'orange'

@@ -1,6 +1,7 @@
-name: 'Bitrise Cache'
-description: 'Cache artifacts using Bitrise cache backend with GitHub Actions interface compatibility'
+name: 'Cache'
+description: 'Cache artifacts like dependencies and build outputs to improve workflow execution time'
 author: 'Bitrise'
+
 inputs:
   path:
     description: 'A list of files, directories, and wildcard patterns to cache and restore'
@@ -9,7 +10,7 @@ inputs:
     description: 'An explicit key for restoring and saving the cache'
     required: true
   restore-keys:
-    description: 'An ordered multiline string listing the prefix-matched keys, that are used for restoring stale cache if no cache hit occurred for key. Note `cache-hit` returns false in this case.'
+    description: 'An ordered multiline string listing the prefix-matched keys, used for restoring stale cache if no cache hit occurred for key. Note `cache-hit` returns false in this case.'
     required: false
   upload-chunk-size:
     description: 'The chunk size used to split up large files during upload, in bytes'
@@ -30,18 +31,23 @@ inputs:
     description: 'Run the post step to save the cache even if another step before fails'
     default: 'false'
     required: false
+    deprecationMessage: |
+      save-always does not work as intended and will be removed in a future release. A separate `actions/cache/restore` step should be used instead. See https://github.com/actions/cache/tree/main/save#always-save-cache for more details.
   verbose:
     description: 'Enable verbose logging'
     default: 'false'
     required: false
+
 outputs:
   cache-hit:
     description: 'A boolean value to indicate an exact match was found for the primary key'
+
 runs:
   using: 'node20'
   main: 'dist/main/index.js'
   post: 'dist/post/index.js'
   post-if: "success()"
+
 branding:
   icon: 'archive'
   color: 'orange'
