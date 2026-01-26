@@ -220,7 +220,7 @@ github-cache/
 
 This action requires the following environment variables to be set for Bitrise cache to work:
 
-- `BITRISEIO_CACHE_SERVICE_URL` - Bitrise cache service URL
-- `BITRISEIO_BUILD_API_TOKEN` - Bitrise build API token
+- `BITRISEIO_ABCS_API_URL` - Bitrise cache service URL
+- `BITRISEIO_BITRISE_SERVICES_ACCESS_TOKEN` - Bitrise build API token
 
 These are automatically available in Bitrise builds. For GitHub Actions, you'll need to configure them as secrets.
