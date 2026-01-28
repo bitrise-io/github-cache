@@ -98,7 +98,6 @@ func runRestore(action *githubactions.Action) error {
 
 	restoreKeysInput := action.GetInput("restore-keys")
 	failOnCacheMiss := parseBool(action.GetInput("fail-on-cache-miss"))
-	lookupOnly := parseBool(action.GetInput("lookup-only"))
 	verbose := parseBool(action.GetInput("verbose"))
 
 	// Save the primary key in state for the save step
@@ -118,64 +117,6 @@ func runRestore(action *githubactions.Action) error {
 
 	action.Infof("Searching for cache with keys: %s", strings.Join(keys, ", "))
 	action.Debugf("Prefixed cache keys: %s", strings.Join(prefixedKeys, ", "))
-
-	if lookupOnly {
-		// For lookup-only, we just check if cache exists without downloading
-		action.Infof("Lookup-only mode: checking if cache exists without downloading")
-
-		// Use Bitrise cache restorer in lookup-only mode
-		restorer := cache.NewRestorer(envRepo, logger, cmdFactory, nil)
-		err := restorer.Restore(cache.RestoreCacheInput{
-			StepId:         "github-cache-restore",
-			Verbose:        verbose,
-			Keys:           prefixedKeys,
-			NumFullRetries: 3,
-		})
-
-		if err != nil {
-			if failOnCacheMiss {
-				return fmt.Errorf("cache not found for input keys: %s, error: %w", strings.Join(keys, ", "), err)
-			}
-			action.Infof("Cache not found for input keys: %s", strings.Join(keys, ", "))
-			action.SetOutput("cache-hit", "false")
-			action.SetOutput("cache-primary-key", primaryKey)
-			return nil
-		}
-
-		// Check the BITRISE_CACHE_HIT env var
-		cacheHit := envRepo.Get("BITRISE_CACHE_HIT")
-		matchedKey := envRepo.Get("BITRISE_CACHE_MATCHED_KEY")
-
-		if cacheHit == "false" || cacheHit == "" {
-			if failOnCacheMiss {
-				return fmt.Errorf("cache not found for input keys: %s", strings.Join(keys, ", "))
-			}
-			action.SetOutput("cache-hit", "false")
-			action.SetOutput("cache-primary-key", primaryKey)
-			action.Infof("Cache not found for input keys: %s", strings.Join(keys, ", "))
-			return nil
-		}
-
-		// Cache exists - set outputs but DON'T actually restore files
-		isExactMatch := cacheHit == "exact"
-		action.SetOutput("cache-hit", fmt.Sprintf("%t", isExactMatch))
-		action.SetOutput("cache-primary-key", primaryKey)
-
-		if matchedKey != "" {
-			// Remove repository prefix from matched key before outputting
-			prefix := getCacheKeyPrefix(action)
-			displayKey := strings.TrimPrefix(matchedKey, prefix)
-			action.SetOutput("cache-matched-key", displayKey)
-			action.Infof("Cache found with key: %s (lookup-only, not downloaded)", displayKey)
-		} else if isExactMatch {
-			action.SetOutput("cache-matched-key", primaryKey)
-			action.Infof("Cache found with key: %s (exact match, lookup-only, not downloaded)", primaryKey)
-		} else {
-			action.Infof("Cache found (partial match, lookup-only, not downloaded)")
-		}
-
-		return nil
-	}
 
 	// Use Bitrise cache restorer
 	restorer := cache.NewRestorer(envRepo, logger, cmdFactory, nil)
@@ -267,6 +208,7 @@ func runSave(action *githubactions.Action) error {
 	paths := parseMultilineInput(pathsInput)
 
 	verbose := parseBool(action.GetInput("verbose"))
+	enableCrossOsArchive := parseBool(action.GetInput("enableCrossOsArchive"))
 	logger.EnableDebugLog(verbose)
 
 	// Add repository prefix to scope cache to this repo
@@ -275,6 +217,14 @@ func runSave(action *githubactions.Action) error {
 	action.Infof("Saving cache with key: %s", primaryKey)
 	action.Debugf("Prefixed cache key: %s", prefixedKey)
 	action.Infof("Paths: %s", strings.Join(paths, ", "))
+
+	// Prepare custom tar args for cross-platform compatibility
+	var customTarArgs []string
+	if enableCrossOsArchive {
+		// Use POSIX format for cross-platform compatibility
+		customTarArgs = []string{"--format=posix"}
+		action.Infof("Cross-platform archive enabled (using POSIX tar format)")
+	}
 
 	// Use Bitrise cache saver
 	saver := cache.NewSaver(envRepo, logger, pathProvider, pathModifier, pathChecker, nil)
@@ -285,6 +235,7 @@ func runSave(action *githubactions.Action) error {
 		Paths:            paths,
 		IsKeyUnique:      false,
 		CompressionLevel: 3,
+		CustomTarArgs:    customTarArgs,
 	})
 	if err != nil {
 		action.Warningf("Cache save failed: %v", err)

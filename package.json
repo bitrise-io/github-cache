@@ -1,6 +1,6 @@
 {
   "name": "bitrise-cache",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "description": "Cache artifacts using Bitrise cache backend with GitHub Actions interface compatibility",
   "main": "dist/main/index.js",
