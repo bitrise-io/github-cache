@@ -121,9 +121,60 @@ func runRestore(action *githubactions.Action) error {
 
 	if lookupOnly {
 		// For lookup-only, we just check if cache exists without downloading
-		// The Bitrise library doesn't have a direct lookup-only mode, so we'll do restore
-		// and let it succeed/fail
-		action.Infof("Lookup-only mode: checking if cache exists")
+		action.Infof("Lookup-only mode: checking if cache exists without downloading")
+
+		// Use Bitrise cache restorer in lookup-only mode
+		restorer := cache.NewRestorer(envRepo, logger, cmdFactory, nil)
+		err := restorer.Restore(cache.RestoreCacheInput{
+			StepId:         "github-cache-restore",
+			Verbose:        verbose,
+			Keys:           prefixedKeys,
+			NumFullRetries: 3,
+		})
+
+		if err != nil {
+			if failOnCacheMiss {
+				return fmt.Errorf("cache not found for input keys: %s, error: %w", strings.Join(keys, ", "), err)
+			}
+			action.Infof("Cache not found for input keys: %s", strings.Join(keys, ", "))
+			action.SetOutput("cache-hit", "false")
+			action.SetOutput("cache-primary-key", primaryKey)
+			return nil
+		}
+
+		// Check the BITRISE_CACHE_HIT env var
+		cacheHit := envRepo.Get("BITRISE_CACHE_HIT")
+		matchedKey := envRepo.Get("BITRISE_CACHE_MATCHED_KEY")
+
+		if cacheHit == "false" || cacheHit == "" {
+			if failOnCacheMiss {
+				return fmt.Errorf("cache not found for input keys: %s", strings.Join(keys, ", "))
+			}
+			action.SetOutput("cache-hit", "false")
+			action.SetOutput("cache-primary-key", primaryKey)
+			action.Infof("Cache not found for input keys: %s", strings.Join(keys, ", "))
+			return nil
+		}
+
+		// Cache exists - set outputs but DON'T actually restore files
+		isExactMatch := cacheHit == "exact"
+		action.SetOutput("cache-hit", fmt.Sprintf("%t", isExactMatch))
+		action.SetOutput("cache-primary-key", primaryKey)
+
+		if matchedKey != "" {
+			// Remove repository prefix from matched key before outputting
+			prefix := getCacheKeyPrefix(action)
+			displayKey := strings.TrimPrefix(matchedKey, prefix)
+			action.SetOutput("cache-matched-key", displayKey)
+			action.Infof("Cache found with key: %s (lookup-only, not downloaded)", displayKey)
+		} else if isExactMatch {
+			action.SetOutput("cache-matched-key", primaryKey)
+			action.Infof("Cache found with key: %s (exact match, lookup-only, not downloaded)", primaryKey)
+		} else {
+			action.Infof("Cache found (partial match, lookup-only, not downloaded)")
+		}
+
+		return nil
 	}
 
 	// Use Bitrise cache restorer
@@ -140,14 +191,20 @@ func runRestore(action *githubactions.Action) error {
 		}
 		action.Infof("Cache not found for input keys: %s %s", strings.Join(keys, ", "), err)
 		action.SetOutput("cache-hit", "false")
+		action.SetOutput("cache-primary-key", primaryKey)
 		return nil
 	}
 
 	// Check the BITRISE_CACHE_HIT env var set by the restorer
 	cacheHit := envRepo.Get("BITRISE_CACHE_HIT")
+	matchedKey := envRepo.Get("BITRISE_CACHE_MATCHED_KEY")
 
 	if cacheHit == "false" || cacheHit == "" {
+		if failOnCacheMiss {
+			return fmt.Errorf("cache not found for input keys: %s", strings.Join(keys, ", "))
+		}
 		action.SetOutput("cache-hit", "false")
+		action.SetOutput("cache-primary-key", primaryKey)
 		action.Infof("Cache not found for input keys: %s", strings.Join(keys, ", "))
 		return nil
 	}
@@ -155,13 +212,24 @@ func runRestore(action *githubactions.Action) error {
 	// exact = exact match on primary key, partial = matched a restore key
 	isExactMatch := cacheHit == "exact"
 	action.SetOutput("cache-hit", fmt.Sprintf("%t", isExactMatch))
+	action.SetOutput("cache-primary-key", primaryKey)
 
 	if isExactMatch {
 		// Save the matched key so save step knows to skip
 		action.SaveState(stateCacheMatchedKey, primaryKey)
+		action.SetOutput("cache-matched-key", primaryKey)
 		action.Infof("Cache restored from key: %s (exact match)", primaryKey)
 	} else {
-		action.Infof("Cache restored from key (partial match)")
+		// For partial matches, use the matched key from environment if available
+		if matchedKey != "" {
+			// Remove repository prefix from matched key before outputting
+			prefix := getCacheKeyPrefix(action)
+			displayKey := strings.TrimPrefix(matchedKey, prefix)
+			action.SetOutput("cache-matched-key", displayKey)
+			action.Infof("Cache restored from key: %s (partial match)", displayKey)
+		} else {
+			action.Infof("Cache restored from key (partial match)")
+		}
 	}
 
 	return nil
