@@ -28208,7 +28208,7 @@ const os = __nccwpck_require__(857);
 const path = __nccwpck_require__(6928);
 
 const BINARY_NAME = 'bitrise-cache';
-const BINARY_TAG = 'v0.0.4';
+const BINARY_TAG = 'v0.0.5';
 const ENVMAN_VERSION = 'latest';
 
 function getPlatform() {
