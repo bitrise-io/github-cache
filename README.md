@@ -9,7 +9,7 @@ A GitHub Action that provides caching using Bitrise's cache backend, with an int
 Use the main action to handle both cache restoration and saving automatically:
 
 ```yaml
-- uses: bitrise-io/github-cache@v1
+- uses: bitrise-io/github-cache@v0.0.6
   with:
     path: |
       ~/.npm
@@ -26,7 +26,7 @@ For more control, use the separate restore and save actions:
 #### Restore Only
 
 ```yaml
-- uses: bitrise-io/github-cache/restore@v1
+- uses: bitrise-io/github-cache/restore@v0.0.6
   id: cache
   with:
     path: |
@@ -40,7 +40,7 @@ For more control, use the separate restore and save actions:
 #### Save Only
 
 ```yaml
-- uses: bitrise-io/github-cache/save@v1
+- uses: bitrise-io/github-cache/save@v0.0.6
   with:
     path: |
       ~/.npm
@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # Restore cache
-      - uses: bitrise-io/github-cache/restore@v1
+      - uses: bitrise-io/github-cache/restore@v0.0.6
         id: cache
         with:
           path: |
@@ -81,7 +81,7 @@ jobs:
         run: npm test
 
       # Save cache (only if dependencies changed)
-      - uses: bitrise-io/github-cache/save@v1
+      - uses: bitrise-io/github-cache/save@v0.0.6
         if: steps.cache.outputs.cache-hit != 'true'
         with:
           path: |
