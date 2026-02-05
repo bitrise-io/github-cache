@@ -138,7 +138,17 @@ func runRestore(action *githubactions.Action) error {
 
 	// Check the BITRISE_CACHE_HIT env var set by the restorer
 	cacheHit := envRepo.Get("BITRISE_CACHE_HIT")
-	matchedKey := envRepo.Get("BITRISE_CACHE_MATCHED_KEY")
+
+	// The SDK sets an env var like BITRISE_CACHE_HIT__<matched-key>=<checksum>
+	// We need to find which key matched by looking for env vars with this prefix
+	matchedKey := ""
+	for _, key := range prefixedKeys {
+		envKey := "BITRISE_CACHE_HIT__" + key
+		if envRepo.Get(envKey) != "" {
+			matchedKey = key
+			break
+		}
+	}
 
 	if cacheHit == "false" || cacheHit == "" {
 		if failOnCacheMiss {
