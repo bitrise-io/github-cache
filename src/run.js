@@ -91,16 +91,12 @@ async function downloadTool(toolName, url, platform) {
 
 async function setupEnvstore() {
   const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
-  // Use a unique envstore per action invocation to avoid conflicts
-  // when jobs run in parallel (especially matrix jobs which share GITHUB_JOB)
-  const jobName = process.env.GITHUB_JOB || 'default';
-  const safeJobName = jobName.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const uniqueId = `${process.pid}-${Date.now()}`;
-  const envstorePath = path.join(workspace, `.envstore-${safeJobName}-${uniqueId}.yml`);
+  const envstorePath = path.join(workspace, '.envstore.yml');
 
-  // Always start with a fresh envstore
-  await fs.promises.writeFile(envstorePath, '');
-  core.debug(`Created envstore at ${envstorePath}`);
+  if (!fs.existsSync(envstorePath)) {
+    await fs.promises.writeFile(envstorePath, '');
+    core.debug(`Created envstore at ${envstorePath}`);
+  }
 
   return envstorePath;
 }
