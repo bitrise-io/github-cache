@@ -8,6 +8,14 @@ A GitHub Action that provides caching using Bitrise's cache backend, with an int
 
 Use the main action to handle both cache restoration and saving automatically:
 
+```diff
+-- uses: actions/cache@v5
++- uses: bitrise-io/github-cache@v0.0.6
+   with:
+     path: node_modules
+     key: node_modules
+```
+
 ```yaml
 - uses: bitrise-io/github-cache@v0.0.6
   with:
@@ -25,6 +33,14 @@ For more control, use the separate restore and save actions:
 
 #### Restore Only
 
+```diff
+-- uses: actions/cache/restore@v5
++- uses: bitrise-io/github-cache/restore@v0.0.6
+   with:
+     path: node_modules
+     key: node_modules
+```
+
 ```yaml
 - uses: bitrise-io/github-cache/restore@v0.0.6
   id: cache
@@ -38,6 +54,14 @@ For more control, use the separate restore and save actions:
 ```
 
 #### Save Only
+
+```diff
+-- uses: actions/cache/save@v5
++- uses: bitrise-io/github-cache/save@v0.0.6
+   with:
+     path: node_modules
+     key: node_modules
+```
 
 ```yaml
 - uses: bitrise-io/github-cache/save@v0.0.6
